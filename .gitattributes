@@ -1,0 +1,6 @@
+* text=auto
+*.mp4 -text
+*.unityweb -text
+*.wasm -text
+*.task -text
+*.ttf -text

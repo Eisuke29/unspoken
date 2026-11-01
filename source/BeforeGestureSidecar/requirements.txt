@@ -1,0 +1,10 @@
+# BEFORE gesture sidecar — pinned dependencies.
+# Only mediapipe is pinned explicitly on first install; it transitively brings
+# numpy, opencv-contrib-python (cv2), protobuf, etc. Do NOT add a second OpenCV
+# package. If `import cv2` fails after install, STOP and report — do not stack
+# multiple OpenCV distributions.
+mediapipe==0.10.35
+# Windows camera-name enumeration (DirectShow) so we can resolve the EXACT
+# "Integrated Camera" index instead of guessing / auto-falling-back (D-098).
+# pygrabber pulls comtypes via pip's normal resolver; do not add anything else.
+pygrabber==0.2

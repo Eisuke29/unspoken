@@ -1,0 +1,335 @@
+/* 遊べる作品のページの共通スタイル（サイト本体と同じ黒×青） */
+:root {
+  --bg: #09070d;
+  --fg: #ece9f5;
+  --muted: #9a93ad;
+  --line: rgba(220, 230, 255, 0.14);
+  --accent: #a98bff;
+  --on-accent: #07080b;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+button:disabled { opacity: 0.45; cursor: default; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Noto Sans JP", system-ui, sans-serif;
+  line-height: 1.8;
+}
+
+.player-wrap {
+  width: min(1100px, 100% - 32px);
+  margin: 0 auto;
+  padding: 24px 0 64px;
+}
+
+.player-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 24px;
+  margin-bottom: 16px;
+}
+
+.player-head h1 {
+  margin: 0;
+  font-family: "Cormorant Garamond", "Noto Serif JP", serif;
+  font-weight: 500;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.player-head h1 small {
+  font-family: "Noto Sans JP", sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-left: 8px;
+}
+
+.back {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  order: 2;
+}
+
+.back:hover {
+  color: var(--accent);
+}
+
+.screen {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 0;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--line);
+}
+
+.screen canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+}
+
+.loading,
+.start,
+.mobile-note {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+  padding: 24px;
+  background: rgba(7, 8, 11, 0.88);
+}
+
+.loading[hidden],
+.start[hidden],
+.mobile-note[hidden] {
+  display: none;
+}
+
+.loading p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.loading small {
+  color: var(--muted);
+}
+
+.bar {
+  width: min(320px, 70vw);
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.3s;
+}
+
+.start {
+  border: 0;
+  color: var(--fg);
+  font: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+  background: rgba(7, 8, 11, 0.55);
+}
+
+.start::before {
+  content: "▶";
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 1.6rem;
+  padding-left: 6px;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.start:hover::before {
+  transform: scale(1.1);
+}
+
+.bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.pill {
+  padding: 8px 18px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.pill:hover {
+  border-color: var(--accent);
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.howto {
+  margin-top: 48px;
+}
+
+.howto h2 {
+  font-size: 0.8rem;
+  letter-spacing: 0.25em;
+  color: var(--accent);
+  font-weight: 400;
+}
+
+.howto dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0 32px;
+}
+
+.howto dl div {
+  display: grid;
+  grid-template-columns: 11em 1fr;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.howto dt {
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  color: var(--fg);
+}
+
+.howto dd {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.howto p {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 560px) {
+  .howto dl div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+/* ---------- 遊び方の手順（番号つきのカード） ---------- */
+.steps {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  counter-reset: step;
+}
+
+.steps li {
+  position: relative;
+  padding: 14px 16px 14px 52px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--muted);
+  counter-increment: step;
+  transition: border-color 0.3s, background 0.3s, color 0.3s;
+}
+
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--fg);
+}
+
+.steps li b {
+  display: block;
+  color: var(--fg);
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+/* 今やる手順を光らせる・終わった手順にチェック */
+.steps li.now {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  color: var(--fg);
+}
+
+.steps li.now::before {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.steps li.done::before {
+  content: "✓";
+  background: #2f5fa8;
+  border-color: #2f5fa8;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8em;
+  text-align: center;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.file-note {
+  max-width: 34em;
+  line-height: 1.8;
+  font-size: 0.9rem;
+}
+
+.file-note b {
+  color: var(--accent);
+}
+.mobile-note { overflow-y: auto; }
+@media (max-width: 600px) {
+  .screen:has(.mobile-note:not([hidden])) { min-height: 220px; }
+  .player-head h1 small { display: block; margin: 10px 0 0; line-height: 1.6; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+body { font-variant-numeric: lining-nums; }

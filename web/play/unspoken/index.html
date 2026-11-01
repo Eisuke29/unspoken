@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UNSPOKEN | Web版</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Noto+Serif+JP:wght@500&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="../player.css">
+  <link rel="stylesheet" href="./guide.css">
+  <style>
+    /* カメラの映像は画面に出さない（手の骨格だけを Unity に渡す） */
+    #cam {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 2px;
+      height: 2px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .status i {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #666;
+    }
+
+    .status[data-s="ready"] i { background: var(--accent); }
+    .status[data-s="error"] i { background: #ff7070; }
+  </style>
+</head>
+<body>
+  <main class="player-wrap">
+    <header class="player-head">
+      <a href="https://eisuke29.github.io/portfolio/work5.html" class="back">← 作品ページへ</a>
+      <h1>UNSPOKEN <small>あなたの合図を、NUL に。</small></h1>
+    </header>
+
+    <!-- 遊び方（ゲームの上に、短い手順で） -->
+    <p class="intro">手の形と動きを決め、NUL に教え、その合図で先へ進みます。PC のカメラとキーボードを使います。</p>
+    <ol class="concepts" aria-label="体験の流れ">
+      <li><span>I · DEFINE</span><b>合図を考えます</b>ジャンプ・しゃがむ・止まる。それぞれ違う手の形を決めます。</li>
+      <li><span>II · TEACH</span><b>3回、教えます</b>画面の案内に合わせ、同じ形と動きを繰り返します。</li>
+      <li><span>III · USE</span><b>NUL に伝えます</b>必要な場面で、教えた手の合図を出します。</li>
+    </ol>
+
+    <div class="play-layout" id="playLayout">
+    <div class="game-column">
+    <div class="screen" id="screen">
+      <canvas id="unity-canvas" tabindex="0" aria-label="UNSPOKEN ゲーム画面"></canvas>
+      <div class="loading" id="loading" role="status">
+        <p>読み込み中 <span id="pct">0%</span></p>
+        <div class="bar"><i id="bar"></i></div>
+        <small>ゲームを読み込んでいます。手の認識は、開始ボタンを押すと準備します</small>
+      </div>
+      <button type="button" class="start" id="start" hidden>カメラを使ってはじめる</button>
+      <div class="mobile-note" id="note" role="alert" hidden></div>
+    </div>
+
+    <div class="bar-row">
+      <button type="button" class="pill" id="full" disabled>案内ごと全画面</button>
+      <a class="pill" href="tutorial.mp4" target="_blank" rel="noopener">▶ 遊び方の動画（45秒）</a>
+      <button type="button" class="pill" id="cameraToggle" disabled>カメラを開始する</button>
+      <span class="status" role="status" id="camStatus" data-s="idle"><i></i><span id="camText">カメラ：まだ使っていません</span></span>
+    </div>
+    <p class="keyboard-note">ゲーム画面をクリックして操作します。<kbd>Space</kbd>：記録 ／ <kbd>R</kbd>：教え直す ／ <kbd>P</kbd>：一時停止</p>
+    </div>
+
+    <aside class="guide" aria-label="合図のガイド">
+      <div class="next-card">
+        <p class="eyebrow" id="stageLabel">準備 · DEFINE</p>
+        <h2 id="nextTitle">1. カメラを許可します</h2>
+        <p id="nextAction" role="status" aria-live="polite">読み込み後に「カメラを使ってはじめる」を押します。</p>
+      </div>
+      <ol class="tutorial" aria-label="初めての手順">
+        <li aria-current="step">カメラを許可します</li>
+        <li>片手全体を映します</li>
+        <li>1つ目の合図を教えます</li>
+        <li>教えた合図を使います</li>
+      </ol>
+      <div class="hand-panel">
+        <canvas id="handView" width="240" height="150" aria-label="認識した手の骨格。カメラ映像は表示しません"></canvas>
+        <div><b id="handLabel">カメラは停止中です</b><p id="handHint">明るい場所で、片手全体を映します。</p></div>
+      </div>
+      <dl class="recognition">
+        <div><dt>見えている手の形</dt><dd id="shapeLabel">—</dd></div>
+        <div><dt>教えた形との一致度</dt><dd id="matchLabel">まだ合図を教えていません</dd></div>
+      </dl>
+      <meter id="matchMeter" min="0" max="100" value="0" aria-label="教えた形との一致度">0%</meter>
+      <p class="fineprint">一致度は形の近さの目安です。成功確率ではありません。動きも一致すると合図が発動します。</p>
+      <p class="command-feedback" id="commandLabel" role="status">発動した合図：まだありません</p>
+      <h3>教えた合図 <small>このページを開いている間だけ有効です</small></h3>
+      <ul class="learned" id="learnedList">
+        <li data-kind="jump"><span>ジャンプ</span><b>未登録 · 0 / 3</b></li>
+        <li data-kind="crouch"><span>しゃがむ</span><b>未登録 · 0 / 3</b></li>
+        <li data-kind="stop"><span>止まる</span><b>未登録 · 0 / 3</b></li>
+      </ul>
+    </aside>
+    </div>
+
+    <section class="howto">
+      <h2>遊び方</h2>
+      <p>画面の案内に沿って、ジャンプ・しゃがむ・止まるの「合図」を、自分で考えた手の形と動きで NUL に教えます。教えた合図で NUL を進ませます。</p>
+      <dl>
+        <div><dt>SPACE を押している間</dt><dd>合図を記録する（案内に沿って、形を作ってから動かし、離す）</dd></div>
+        <div><dt>R</dt><dd>教えている合図を最初から作り直す</dd></div>
+        <div><dt>P</dt><dd>一時停止</dd></div>
+      </dl>
+      <ol>
+        <li>ジャンプとしゃがむは、別々の手の形と、動かす方向を決めます。止まる合図は、形を保って伝えます。</li>
+        <li>教える画面で <kbd>Space</kbd> を押し、まず形を保ちます。「動かします」と出たら動かし、「離します」と出たらキーを離します。同じ合図を3回教えます。</li>
+        <li>使うときも、教えたのと同じ手・形・方向で合図します。手が枠から切れたら、中央に戻してからやり直します。</li>
+      </ol>
+      <p>カメラ映像は、このページ内で手の骨格と明るさの目安を求めるためだけに使います。映像を表示・保存・外部送信しません。画面には骨格だけを表示します。カメラの停止・ページを閉じる操作で撮影を終了します。</p>
+    </section>
+  </main>
+
+  <video id="cam" playsinline muted></video>
+
+  <script>
+  (async () => {
+    const unavailable = location.protocol === "file:" || !isSecureContext;
+    const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (unavailable || mobile) {
+      document.getElementById("loading").hidden = true;
+      const note = document.getElementById("note");
+      note.hidden = false;
+      note.textContent = mobile ? "PC のカメラとキーボードで遊ぶ作品です。PC のブラウザで開いてください。" : "カメラを使うには HTTPS または localhost で開いてください。PC では「ローカルで試す.bat」から起動できます。";
+      document.getElementById("nextTitle").textContent = "PC の利用環境を確認します";
+      document.getElementById("nextAction").textContent = note.textContent;
+      return;
+    }
+    const { createGuide } = await import("./guide.js");
+    const guide = createGuide();
+    const { createSidecar } = await import("./sidecar.js");
+
+    const canvas = document.getElementById("unity-canvas");
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    let unity = null;
+    const early = [];
+
+    // 手の認識の結果（JSON）を Unity に渡す。Unity の準備ができる前の分は捨てずに待たせる
+    const deliver = (json) => {
+      if (unity) unity.SendMessage("BeforeWebBridge", "Datagram", json);
+      else if (early.length < 60) early.push(json);
+    };
+
+    const camText = {
+      idle: "カメラ：停止中",
+      camera: "カメラ：許可を待っています",
+      model: "手の認識：準備中",
+      ready: "手の認識：動いています",
+      error: "カメラを使えませんでした（ブラウザの設定でカメラを許可してください）",
+    };
+    const setStatus = (s, error) => {
+      const start = document.getElementById("start");
+      const cameraButton = document.getElementById("cameraToggle");
+      cameraButton.disabled = !unity || s === "camera" || s === "model";
+      cameraButton.textContent = s === "ready" ? "カメラを止める" : "カメラを再開する";
+      if (s === "error") {
+        start.hidden = false;
+        start.textContent = "カメラを再試行する";
+      }
+      if (s === "ready") start.hidden = true;
+      document.getElementById("camStatus").dataset.s = s;
+      const reason = error?.name === "NotFoundError" ? "カメラが見つかりません。接続を確認してください。"
+        : error?.name === "NotReadableError" ? "カメラを別のアプリが使っている可能性があります。"
+        : error?.name === "NotAllowedError" ? "カメラが許可されていません。ブラウザの設定から許可して再試行してください。"
+        : "手の認識を開始できませんでした。接続やブラウザの設定を確認して再試行してください。";
+      document.getElementById("camText").textContent = s === "error" ? reason : (camText[s] || s);
+      guide.status(s, s === "error" ? reason : "");
+    };
+
+    const sidecar = createSidecar({ deliver, video: document.getElementById("cam"), onStatus: setStatus, onDiagnostics: guide.update });
+    // Unity（WebGL）から呼ばれる窓口（BeforeSidecar.jslib）
+    let cameraAllowed = false;
+    // Unity側の自動起動要求ではカメラを開かず、利用者のボタン操作を待つ。
+    window.beforeSidecar = { ...sidecar, start: () => cameraAllowed ? sidecar.start() : Promise.resolve(false) };
+    addEventListener("pagehide", () => { cameraAllowed = false; sidecar.stop(); });
+
+    canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    const showNote = (html) => {
+      document.getElementById("loading").hidden = true;
+      const n = document.getElementById("note");
+      n.innerHTML = html;
+      n.hidden = false;
+    };
+
+    if (location.protocol === "file:") {
+      // Unity の WebGL とカメラは、ファイルをダブルクリックして開いたページでは動かない
+      showNote('<p class="file-note"><b>このままでは動きません</b><br>Unity の Web 版とカメラは、ファイルをダブルクリックして開くと使えません。<br>サーバーに上げたページで開くか、PC で試すときは <b>ローカルで試す.bat</b> から開いてください。</p>');
+    } else if (isMobile) {
+      showNote('<p class="file-note">PC のカメラとキーボードで遊ぶ作品です。<br><b>PC のブラウザ</b>で開いてください。</p>');
+    } else {
+      const script = document.createElement("script");
+      script.src = "Build/unspoken.loader.js";
+      script.onload = () => {
+        createUnityInstance(canvas, {
+          dataUrl: "Build/unspoken.data.unityweb",
+          frameworkUrl: "Build/unspoken.framework.js.unityweb",
+          codeUrl: "Build/unspoken.wasm.unityweb",
+          streamingAssetsUrl: "StreamingAssets",
+          companyName: "Eisuke Kinoshita",
+          productName: "UNSPOKEN",
+          productVersion: "1.0",
+        }, (p) => {
+          document.getElementById("pct").textContent = Math.round(p * 100) + "%";
+          document.getElementById("bar").style.width = p * 100 + "%";
+        }).then((instance) => {
+          unity = instance;
+          document.getElementById("cameraToggle").disabled = false;
+          early.splice(0).forEach(deliver);
+          document.getElementById("loading").hidden = true;
+          document.getElementById("start").hidden = false;
+          document.getElementById("full").disabled = false;
+          const layout = document.getElementById("playLayout");
+          const full = document.getElementById("full");
+          full.disabled = !document.fullscreenEnabled;
+          full.onclick = async () => {
+            try {
+              if (document.fullscreenElement) await document.exitFullscreen();
+              else await layout.requestFullscreen();
+              canvas.focus();
+            } catch { full.textContent = "全画面を利用できません"; }
+          };
+          document.addEventListener("fullscreenchange", () => { full.textContent = document.fullscreenElement ? "全画面を終了" : "案内ごと全画面"; });
+        }).catch((err) => {
+          console.error(err);
+          showNote('<p class="file-note"><b>読み込めませんでした</b><br>ページを再読み込みしてください。改善しない場合は、ブラウザのハードウェア アクセラレーションの設定や通信状態を確認してください。</p>');
+        });
+      };
+      script.onerror = () => showNote('<p class="file-note"><b>ゲームのファイルが見つかりません</b><br>Build フォルダもいっしょにアップロードされているか確認してください。</p>');
+      document.body.appendChild(script);
+    }
+
+    // はじめるボタン：カメラを起動し、ゲームにキーボードを渡す
+    document.getElementById("start").addEventListener("click", (e) => {
+      e.currentTarget.hidden = true;
+      cameraAllowed = true;
+      sidecar.start();
+      canvas.focus();
+    });
+    document.getElementById("cameraToggle").addEventListener("click", () => {
+      if (document.getElementById("camStatus").dataset.s === "ready") {
+        cameraAllowed = false;
+        sidecar.stop();
+      } else {
+        cameraAllowed = true;
+        sidecar.start();
+        canvas.focus();
+      }
+    });
+  })().catch(error => {
+    console.error(error);
+    document.getElementById("loading").hidden = true;
+    document.getElementById("note").hidden = false;
+    document.getElementById("note").textContent = "起動に必要なファイルを読み込めませんでした。通信状態を確認して再読み込みしてください。";
+  });
+  </script>
+</body>
+</html>
